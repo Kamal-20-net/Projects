@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="iBot AI - Your friendly AI assistant for weather, knowledge, and more!">
+    <title>iBot AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Placeholder for styles.css; create this file in static/ if needed -->
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="manifest" href="/manifest.json">
+    <!-- Ensure favicon.ico exists in static/ -->
+    <link rel="icon" href="/static/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+   
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #1f2937;
+            transition: left 0.3s ease-in-out;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            margin-top: 60px;
+        }
+
+        .sidebar-nav a {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 18px;
+            font-weight: 500;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .sidebar-nav a:hover {
+            background-color: #374151;
+            border-radius: 5px;
+            transform: translateX(5px);
+        }
+
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+            z-index: 1100;
+            transition: color 0.3s;
+        }
+
+        .toggle-btn:hover {
+            color: #a5b4fc;
+        }
+
+        .content {
+            margin-left: 20px;
+            padding: 20px;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        .content.shifted {
+            margin-left: 270px;
+        }
+
+        @media (max-width: 740px) {
+            .sidebar {
+                width: 200px;
+                left: -200px;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            .content.shifted {
+                margin-left: 220px;
+            }
+
+            .sidebar-nav a {
+                font-size: 16px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+ 
+<body class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-indigo-900">
+    <button class="toggle-btn" onclick="toggleSidebar()" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="false">☰</button>
+    <div class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <a href="index.html">Home</a>
+            <a href="about.html">About</a>
+            <a href="feedback.html">Feedback</a>
+        
+        </nav>
+    </div>
+   
+    <div class="content w-full max-w-2xl p-4 sm:p-6">
+        <h1 class="text-4xl sm:text-5xlSYNTAX_ERROR font-bold text-center text-white mb-6">iBOT AI</h1>
+        <div class="bg-gray-800 bg-opacity-80 backdrop-blur-md rounded-2xl shadow-2xl p-6">
+            <div class="flex mb-4">
+                <input 
+                    id="command" 
+                    type="text" 
+                    placeholder="Talk to iBot..." 
+                    class="w-full p-3 rounded-l-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base transition-all duration-200"
+                    aria-label="Command input"
+                >
+                <button 
+                    id="micButton" 
+                    aria-label="Toggle voice input" 
+                    class="p-3 bg-indigo-600 rounded-r-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+                >
+                    <svg class="w-6 h-6" fill="none" stroke="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="mb-4 flex items-center gap-2">
+                <span id="micIndicator" class="hidden text-red-500 font-semibold flex items-center gap-2" aria-live="polite">
+                    <span class="animate-pulse">🎤 Listening</span>
+                    <span class="flex space-x-1">
+                        <span class="w-1 h-1 bg-red-500 rounded-full animate-bounce"></span>
+                        <span class="w-1 h-1 bg-red-500 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
+                        <span class="w-1 h-1 bg-red-500 rounded-full animate-bounce" style="animation-delay: 0.4s;"></span>
+                    </span>
+                </span>
+                <div id="loadingSpinner" class="hidden w-5 h-5 border-2 border-t-indigo-500 border-gray-600 rounded-full animate-spin"></div>
+                <div id="equalizer" class="hidden flex items-center gap-1" aria-hidden="true" data-speaking-indicator>
+                    <span class="w-1 h-5 bg-gradient-to-b from-indigo-400 to-indigo-600 rounded animate-equalizer" style="animation-delay: 0s;"></span>
+                    <span class="w-1 h-5 bg-gradient-to-b from-indigo-400 to-indigo-600 rounded animate-equalizer" style="animation-delay: 0.1s;"></span>
+                    <span class="w-1 h-5 bg-gradient-to-b from-indigo-400 to-indigo-600 rounded animate-equalizer" style="animation-delay: 0.2s;"></span>
+                    <span class="w-1 h-5 bg-gradient-to-b from-indigo-400 to-indigo-600 rounded animate-equalizer" style="animation-delay: 0.3s;"></span>
+                    <span class="w-1 h-5 bg-gradient-to-b from-indigo-400 to-indigo-600 rounded animate-equalizer" style="animation-delay: 0.4s;"></span>
+                </div>
+            </div>
+            <div 
+                id="output" 
+                class="p-4 bg-gray-700 rounded-lg border border-gray-600 max-h-[60vh] overflow-y-auto text-white" 
+                aria-live="polite"
+            ></div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            try {
+                const sidebar = document.getElementById('sidebar');
+                const content = document.querySelector('.content');
+                const toggleBtn = document.querySelector('.toggle-btn');
+                sidebar.classList.toggle('active');
+                content.classList.toggle('shifted');
+                toggleBtn.setAttribute('aria-expanded', sidebar.classList.contains('active'));
+            } catch (e) {
+                console.error('Error toggling sidebar:', e);
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.querySelector('.toggle-btn');
+            if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+                toggleSidebar();
+            }
+        });
+
+        document.querySelectorAll('.sidebar-nav a').forEach(link => {
+            link.addEventListener('click', () => {
+                toggleSidebar();
+            });
+        });
+
+        const commandInput = document.getElementById("command");
+        const outputDiv = document.getElementById("output");
+        const micButton = document.getElementById("micButton");
+        const micIndicator = document.getElementById("micIndicator");
+        const loadingSpinner = document.getElementById("loadingSpinner");
+        const equalizer = document.getElementById("equalizer");
+
+        let mathJsLoaded = false;
+        function loadMathJs(callback) {
+            if (mathJsLoaded) {
+                callback();
+                return;
+            }
+            const script = document.createElement("script");
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.0.0/math.min.js";
+            script.async = true;
+            script.onload = () => {
+                mathJsLoaded = true;
+                callback();
+            };
+            script.onerror = () => {
+                console.error('Failed to load Math.js');
+                addOutput('Error loading Math.js. Try again later.');
+            };
+            document.body.appendChild(script);
+        }
+
+        const recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+            ? new (window.SpeechRecognition || window.webkitSpeechRecognition)()
+            : null;
+
+        if (!recognition) {
+            micButton.disabled = true;
+            micButton.title = "Speech recognition not supported.";
+            addOutput("Speech recognition is not supported on this browser. Please use text input or try Chrome.");
+        } else {
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+        }
+
+        let isListening = false;
+        let isVoiceEnabled = true;
+
+        const knowledgeBase = {
+            "hi": "How can I help you today?",
+            "hey": "How can I help you today?",
+            "hello": "How can I help you today?",
+
+            "who created you": "I was created by a man named Kamal, and I’ll tell you a secret, don’t tell anyone! His full name is Kamalesh, but he likes to be called Kamal.",
+            "who creates you": "I was created by a man named Kamal, and I’ll tell you a secret, don’t tell anyone! His full name is Kamalesh, but he likes to be called Kamal.",
+            "who create you": "I was created by a man named Kamal, and I’ll tell you a secret, don’t tell anyone! His full name is Kamalesh, but he likes to be called Kamal.",
+            
+            "what is the capital of india": "The capital of India is Delhi.",
+            "what is the capital of tamilnadu":"Chennai is the capital city of Tamil Nadu. A city of great history and heritage, Chennai is today one of the most visited cities in the world. Originally called Madras, Chennai is located along the Coromandel Coast in the Bay of Bengal and is a major port city in the region.",
+            "capital of tamilnadu":"Chennai is the capital city of Tamil Nadu. A city of great history and heritage, Chennai is today one of the most visited cities in the world. Originally called Madras, Chennai is located along the Coromandel Coast in the Bay of Bengal and is a major port city in the region.",
+            
+            "iam fine": "It's nice to hear this from you.",
+            "how are you": "I'm blessed!, and I'm doing great, thanks for asking! How about you?",
+            "how are u": "I'm blessed!, and I'm doing great, thanks for asking! How about you?",
+           
+            "who are you": "I’m iBot AI, your friendly assistant AI buddy.",
+            "who are u": "I’m iBot AI, your friendly assistant AI buddy.",
+            "your name": "I’m iBot AI, your friendly assistant AI buddy.",
+            "IBOT AI": "Heyy ! it's me, your funny",
+            "ibot": "Heyy ! it's me, your funny",
+            "ibot ai": "Heyy ! it's me, your funny",
+            "IBOT": "Heyy ! it's me, your funny",
+            "what is your name": "I’m iBot AI, your friendly assistant AI, buddy.",
+
+            "bye": "Bye buddy!!!, You can come back anytime, I will wait for you.",
+            "goodbye": "Bye buddy!!!, You can come back anytime, I will wait for you.",
+            "good bye": "Bye buddy!!!, You can come back anytime, I will wait for you.",
+            "see you": "Bye buddy!!!, You can come back anytime, I will wait for you.",
+            "who is the founder of instagram": "Kevin Systrom. Kevin Systrom (born December 30, 1983) is an American computer programmer and entrepreneur. He co-founded Instagram, the world's largest photo sharing website, along with Mike Krieger.",
+            "founder of instagram": "Kevin Systrom. Kevin Systrom (born December 30, 1983) is an American computer programmer and entrepreneur. He co-founded Instagram, the world's largest photo sharing website, along with Mike Krieger.",
+            "instagram founder": "Kevin Systrom. Kevin Systrom (born December 30, 1983) is an American computer programmer and entrepreneur. He co-founded Instagram, the world's largest photo sharing website, along with Mike Krieger.",
+            "instagram founder name": "Kevin Systrom. Kevin Systrom (born December 30, 1983) is an American computer programmer and entrepreneur. He co-founded Instagram, the world's largest photo sharing website, along with Mike Krieger."
+        };
+
+        const sassyIntros = [
+            "Hold my circuits, I got this!",
+            "Oh, you think you can stump me? Watch this!",
+            "Buckle up, I’m divin’ into the answer!",
+            "Gimme a sec, I’m flexin’ my AI muscles!",
+            "Alright, alright, let’s see what I can cook up!",
+            "My AI gears are grindin’ for ya!",
+            "Hang tight, your VIP answer’s comin’ up!",
+            "Time to shine, iBot style!"
+        ];
+
+        function getSassyIntro() {
+            return sassyIntros[Math.floor(Math.random() * sassyIntros.length)] + " ";
+        }
+
+        function speak(text) {
+            if (!isVoiceEnabled || !window.speechSynthesis) {
+                addOutput("Text-to-speech is not supported on this browser.");
+                return;
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = "en-US";
+            utterance.rate = 1;
+            utterance.pitch = 1;
+            utterance.onstart = () => {
+                equalizer.classList.remove("hidden");
+            };
+            utterance.onend = () => {
+                equalizer.classList.add("hidden");
+            };
+            utterance.onerror = () => {
+                equalizer.classList.add("hidden");
+                console.error('Speech synthesis error');
+            };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function addOutput(text, isHtml = false) {
+            const div = document.createElement("div");
+            div.className = "p-2 rounded-lg bg-gray-600 bg-opacity-50 mb-2 animate-slide-in";
+            if (isHtml) {
+                const link = document.createElement("a");
+                link.href = text.match(/href="([^"]+)"/)[1];
+                link.textContent = text.match(/>([^<]+)</)[1];
+                link.className = "text-indigo-400 underline hover:text-indigo-300";
+                link.target = "_blank";
+                div.appendChild(link);
+            } else {
+                div.textContent = text;
+            }
+            outputDiv.appendChild(div);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            speak(text.replace(/(<[^>]+>)/g, ""));
+            commandInput.value = "";
+            loadingSpinner.classList.add("hidden");
+        }
+
+        function getTimeDate() {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' });
+            const date = now.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' });
+            return `${getSassyIntro()}Time: ${time}, Date: ${date}. Don’t be late for the fun!`;
+        }
+
+        async function getWeather(city) {
+            loadingSpinner.classList.remove("hidden");
+            try {
+                const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`);
+                const geoData = await geoResponse.json();
+                if (!geoData.length) return `${getSassyIntro()}City '${city}' not found. Did you invent that place?`;
+                const { lat, lon } = geoData[0];
+
+                const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                const weatherData = await weatherResponse.json();
+                const temp = weatherData.current_weather.temperature;
+                const weatherCode = weatherData.current_weather.weathercode;
+                const weatherDesc = {
+                    0: "Clear sky",
+                    1: "Mainly clear",
+                    2: "Partly cloudy",
+                    3: "Overcast",
+                    45: "Fog",
+                    61: "Light rain",
+                    63: "Moderate rain",
+                    80: "Showers"
+                }[weatherCode] || "Unknown";
+                return `${getSassyIntro()}Weather in ${city}: ${weatherDesc}, Temperature: ${temp}°C. Grab an umbrella or shades!`;
+            } catch (e) {
+                return `${getSassyIntro()}Error fetching weather: ${e.message}. Maybe the clouds are playin’ hide-and-seek?`;
+            }
+        }
+
+        async function getWikipedia(query) {
+            loadingSpinner.classList.remove("hidden");
+            try {
+                let response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${encodeURIComponent(query)}&origin=*`);
+                let data = await response.json();
+                let pages = data.query.pages;
+                let pageId = Object.keys(pages)[0];
+
+                if (pageId !== "-1") {
+                    const extract = pages[pageId].extract.split('. ').slice(0, 2).join('. ') + '.';
+                    return `${getSassyIntro()}${extract || `No summary available for '${query}'. Guess it’s a mystery!`}`;
+                }
+
+                response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(query)}&srlimit=1&origin=*`);
+                data = await response.json();
+                const searchResults = data.query.search;
+                if (searchResults.length === 0) {
+                    return `${getSassyIntro()}No Wikipedia page found for '${query}'. Try somethin’ less out-of-this-world!`;
+                }
+
+                const title = searchResults[0].title;
+                response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${encodeURIComponent(title)}&origin=*`);
+                data = await response.json();
+                pages = data.query.pages;
+                pageId = Object.keys(pages)[0];
+                const extract = pages[pageId].extract.split('. ').slice(0, 2).join('. ') + '.';
+                return `${getSassyIntro()}${extract || `No summary available for '${query}'. My brain’s on a coffee break!`}`;
+            } catch (e) {
+                return `${getSassyIntro()}Error fetching Wikipedia data: ${e.message}. My nerdy side’s takin’ a nap!`;
+            }
+        }
+
+        async function getGoogleSearch(query) {
+            loadingSpinner.classList.remove("hidden");
+            try {
+                const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_redirect=1`);
+                const data = await response.json();
+                if (data.AbstractText) {
+                    return `${getSassyIntro()}${data.AbstractText}`;
+                } else if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+                    return `${getSassyIntro()}${data.RelatedTopics[0].Text || `No direct answer found for '${query}'. You’re a tough one!`}`;
+                } else {
+                    return `${getSassyIntro()}No direct answer found for '${query}'. You got a tricky one there!`;
+                }
+            } catch (e) {
+                return `${getSassyIntro()}Error fetching search results: ${e.message}. My search engine’s on vacation!`;
+            }
+        }
+
+        function singSong(song) {
+            const songs = {
+                "happy birthday": `
+                    Happy birthday to you,
+                    Happy birthday to you,
+                    Happy birthday dear friend,
+                    Happy birthday to you!
+                `,
+                "twinkle twinkle": `
+                    Twinkle, twinkle, little star,
+                    How I wonder what you are!
+                    Up above the world so high,
+                    Like a diamond in the sky.
+                `,
+                "jingle bells": `
+                    Jingle bells, jingle bells, jingle all the way,
+                    Oh what fun it is to ride in a one-horse open sleigh!
+                `
+            };
+            return songs[song.toLowerCase()]
+                ? `${getSassyIntro()}${songs[song.toLowerCase()]}`
+                : `${getSassyIntro()}Sorry, I don't know the lyrics to '${song}'. Try 'happy birthday', 'twinkle twinkle', or 'jingle bells'.`;
+        }
+
+        function getJoke(category = null) {
+            const jokes = {
+                puns: [
+                    "Why did the tomato turn red? Because it saw the salad dressing!",
+                    "What do you call a bear with no socks on? Barefoot!",
+                    "Why don't eggs tell jokes? They'd crack up!"
+                ],
+                knockKnock: [
+                    "Knock, knock! Who's there? Boo. Boo who? Don’t cry, it’s just a joke!",
+                    "Knock, knock! Who's there? Lettuce. Lettuce who? Lettuce in, it’s cold out here!",
+                    "Knock, knock! Who's there? Cow says. Cow says who? No, cow says moooo!"
+                ],
+                tech: [
+                    "Why did the computer go to art school? Because it wanted to learn how to draw a better byte!",
+                    "What do you call a dinosaur that crashes servers? A Digital Raptor!",
+                    "Why was the math book sad? Because it had too many problems to solve!"
+                ]
+            };
+
+            if (!category) {
+                const categories = Object.keys(jokes);
+                category = categories[Math.floor(Math.random() * categories.length)];
+            }
+
+            const selectedJokes = jokes[category];
+            return `${getSassyIntro()}Time to tickle your funny bone! ${selectedJokes[Math.floor(Math.random() * selectedJokes.length)]}`;
+        }
+
+        function calculateMath(expression) {
+            loadingSpinner.classList.remove("hidden");
+            loadMathJs(() => {
+                try {
+                    const result = math.evaluate(expression);
+                    addOutput(`${getSassyIntro()}Math mode: activated! Result: ${result}`);
+                } catch (e) {
+                    addOutput(`${getSassyIntro()}Invalid calculation: ${e.message}. Did you try dividin’ by a potato?`);
+                }
+            });
+        }
+
+        async function getDefinition(word) {
+            const summary = await getWikipedia(word);
+            if (summary.includes("No Wikipedia page found")) {
+                return `${getSassyIntro()}No definition found for '${word}'. Try a word that’s not from Mars!`;
+            }
+            return `${getSassyIntro()}Definition of ${word}: ${summary}`;
+        }
+
+        function toggleVoice() {
+            isVoiceEnabled = !isVoiceEnabled;
+            return `${getSassyIntro()}Voice output ${isVoiceEnabled ? "enabled, let’s chat like superstars!" : "disabled, I’m goin’ silent like a ninja!"}`;
+        }
+
+        async function handleCommand(command) {
+            command = command.toLowerCase().trim();
+            commandInput.value = command;
+
+            if (knowledgeBase[command]) {
+                addOutput(`${getSassyIntro()}${knowledgeBase[command]}`);
+                return;
+            }
+
+            if (command.includes("time") || command.includes("date")) {
+                addOutput(getTimeDate());
+            } else if (command.includes("weather")) {
+                const city = command.replace("weather", "").trim() || "London";
+                const weather = await getWeather(city);
+                addOutput(weather);
+            } else if (command.includes("wikipedia") || command.includes("why") || command.includes("tell me about") || command.includes("info about") || command.includes("what is") || command.includes("who is the founder of")) {
+                const query = command.replace("wikipedia", "").replace("why", "").replace("tell me about", "").replace("info about", "").replace("what is", "").replace("who is the founder of", "").trim();
+                if (!query) {
+                    addOutput(`${getSassyIntro()}Please specify a topic to search. Don’t leave me guessin’!`);
+                    return;
+                }
+                const summary = await getWikipedia(query);
+                addOutput(summary);
+            } else if (command.includes("google") || command.includes("search google for") || command.includes("who is") || command.includes("when the")) {
+                const query = command.replace("google", "").replace("search google for", "").replace("who is", "").replace("when the", "").trim();
+                if (!query) {
+                    addOutput(`${getSassyIntro()}Please specify a topic to search. Gimme somethin’ to work with!`);
+                    return;
+                }
+                const result = await getGoogleSearch(query);
+                addOutput(result);
+            } else if (command.includes("play")) {
+                let song = command.replace("play", "").trim();
+                const songList = ["Happy Birthday", "Twinkle Twinkle Little Star", "Jingle Bells"];
+                if (!song || song === "song" || song === "a song") {
+                    song = songList[Math.floor(Math.random() * songList.length)];
+                }
+                const youtubeUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`;
+                const newWindow = window.open(youtubeUrl, "_blank");
+                if (!newWindow) {
+                    addOutput(`${getSassyIntro()}Whoops, pop-ups are blocked! Enable them to jam to ${song} on YouTube.`);
+                } else {
+                    addOutput(`${getSassyIntro()}Opening ${song} on YouTube...`);
+                }
+            } else if (command.includes("sing")) {
+                const song = command.replace("sing", "").trim();
+                const lyrics = singSong(song);
+                addOutput(lyrics);
+            } else if (command.includes("joke") || command.includes("tell me a joke")) {
+                const joke = getJoke();
+                addOutput(joke);
+            } else if (command.includes("calculate") || command.includes("what is") && command.match(/\d/)) {
+                const expr = command.replace("calculate", "").replace("what is", "").trim();
+                calculateMath(expr);
+            } else if (command.includes("define") || command.includes("definition of")) {
+                const word = command.replace("define", "").replace("definition of", "").trim();
+                if (!word) {
+                    addOutput(`${getSassyIntro()}Please specify a word to define. Don’t make me play charades!`);
+                    return;
+                }
+                const definition = await getDefinition(word);
+                addOutput(definition);
+            } else if (command.includes("toggle voice")) {
+                const voiceStatus = toggleVoice();
+                addOutput(voiceStatus);
+            } else {
+                const wikiSummary = await getWikipedia(command);
+                if (wikiSummary.includes("No Wikipedia page found")) {
+                    const searchResult = await getGoogleSearch(command);
+                    addOutput(searchResult);
+                } else {
+                    addOutput(wikiSummary);
+                }
+            }
+        }
+
+        if (recognition) {
+            micButton.addEventListener("click", () => {
+                if (isListening) {
+                    recognition.stop();
+                    micIndicator.classList.add("hidden");
+                } else {
+                    try {
+                        recognition.start();
+                        micIndicator.classList.remove("hidden");
+                        isListening = true;
+                        micButton.classList.add("animate-pulse");
+                    } catch (e) {
+                        console.error('Speech recognition error:', e);
+                        addOutput('Error starting speech recognition. Check microphone permissions.');
+                    }
+                }
+                micButton.setAttribute("aria-pressed", isListening);
+            });
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                commandInput.value = transcript;
+                handleCommand(transcript);
+            };
+
+            recognition.onend = () => {
+                micIndicator.classList.add("hidden");
+                isListening = false;
+                micButton.classList.remove("animate-pulse");
+                micButton.setAttribute("aria-pressed", isListening);
+            };
+
+            recognition.onerror = (event) => {
+                let errorMessage = `${getSassyIntro()}Speech recognition error: ${event.error}. My ears are takin’ a nap!`;
+                if (event.error === "not-allowed") {
+                    errorMessage = `${getSassyIntro()}Microphone access denied. Please allow microphone permissions in your browser settings.`;
+                } else if (event.error === "network") {
+                    errorMessage = `${getSassyIntro()}Network error. Check your internet connection and try again.`;
+                }
+                addOutput(errorMessage);
+                micIndicator.classList.add("hidden");
+                isListening = false;
+                micButton.classList.remove("animate-pulse");
+                micButton.setAttribute("aria-pressed", isListening);
+            };
+        }
+
+        commandInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter" && commandInput.value.trim()) {
+                handleCommand(commandInput.value);
+            }
+        });
+
+        window.addEventListener("resize", () => {
+            commandInput.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/sw.js").catch(err => console.error("Service Worker registration failed:", err));
+        }
+    </script>
+</body>
+</html>
